@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poké-Med - O Desafio Minimalista</title>
+    <style>
+        /* ESTILOS CSS - Estilo Termo/Minimalista */
+        :root {
+            --cor-principal: #34495e; /* Cinza Escuro (Texto) */
+            --cor-secundaria: #f39c12; /* Amarelo (Destaque/Pokemon) */
+            --cor-fundo: #ecf0f1; /* Fundo Levemente Cinza */
+            --cor-cartao: #ffffff; /* Fundo Branco Puro */
+            --cor-sucesso: #2ecc71; /* Verde Plano */
+            --cor-erro: #e74c3c; /* Vermelho Plano */
+            --cor-remedio: #3498db; /* Azul Plano */
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: var(--cor-fundo);
+            margin: 0;
+            color: var(--cor-principal);
+            padding: 20px;
+        }
+
+        .card {
+            background-color: var(--cor-cartao);
+            padding: 30px;
+            border-radius: 8px; /* Bordas suaves */
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08); /* Sombra sutil */
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        /* --- TÍTULOS E PLACAR --- */
+        h1 {
+            color: var(--cor-principal);
+            font-size: 1.8em;
+            margin-bottom: 5px;
+        }
+        #score-board {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 400px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+            color: var(--cor-principal);
+            border-bottom: 2px solid #bdc3c7;
+            padding-bottom: 10px;
+        }
+        
+        /* --- EXIBIÇÃO DA PALAVRA --- */
+        #word-display {
+            background-color: var(--cor-fundo);
+            padding: 25px 15px;
+            border-radius: 6px;
+            margin: 30px 0;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        #palavra {
+            font-size: 2.8em;
+            font-weight: 900;
+            color: var(--cor-principal);
+            text-transform: capitalize;
+            letter-spacing: 1px;
+            margin: 0;
+        }
+
+        /* --- BOTÕES DE AÇÃO --- */
+        .actions {
+            display: flex;
+            justify-content: space-around;
+            gap: 10px;
+        }
+
+        .action-button {
+            flex-grow: 1;
+            padding: 15px 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        
+        #btnPokemon {
+            background-color: var(--cor-secundaria); 
+            color: var(--cor-principal);
+        }
+        #btnRemedio {
+            background-color: var(--cor-remedio); 
+            color: white;
+        }
+
+        .action-button:hover:not(:disabled) {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        .action-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* --- FEEDBACK --- */
+        #feedback {
+            margin-top: 25px;
+            font-size: 1.2em;
+            font-weight: bold;
+            min-height: 20px;
+        }
+        .correct { color: var(--cor-sucesso); }
+        .wrong { color: var(--cor-erro); }
+
+        /* --- TELAS DE INÍCIO/FIM --- */
+        .start-button, .restart-button {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            background-color: var(--cor-sucesso);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 20px;
+        }
+        .start-button:hover, .restart-button:hover {
+            background-color: #27ae60;
+        }
+        #final-score span {
+            font-size: 2.5em;
+            color: var(--cor-principal);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="score-board" style="display: none;">
+        <div id="current-score">PONTOS: 0</div>
+        <div id="high-score">RECORDE: 0</div>
+    </div>
+
+    <div id="start-screen" class="card">
+        <h1>💊 Poké-Med ⚡</h1>
+        <p>Distinção Nível Hard! O recorde atual é: <span id="recorde-inicial">0</span></p>
+        <button class="start-button" onclick="startGame()">INICIAR O JOGO</button>
+    </div>
+
+    <div id="game-screen" class="card" style="display: none;">
+        <div id="word-display">
+            <p id="palavra">Aguardando...</p>
+        </div>
+        
+        <div class="actions">
+            <button id="btnPokemon" class="action-button">POKÉMON</button>
+            <button id="btnRemedio" class="action-button">REMÉDIO</button>
+        </div>
+
+        <p id="feedback"></p>
+    </div>
+
+    <div id="game-over-screen" class="card" style="display: none;">
+        <h2>FIM DE JOGO</h2>
+        <p>Você atingiu a marca de:</p>
+        <p id="final-score"><span>0</span></p>
+        <p id="new-record-message" style="color: var(--cor-secundaria); font-style: italic;"></p>
+        <button class="restart-button" onclick="restartGame()">JOGAR NOVAMENTE</button>
+    </div>
+
+    <script>
+        // Lógica JavaScript
+        const itens = [
+            // POKÉMONS (com nomes menos óbvios)
+            { nome: "Zoroark", tipo: "Pokemon" },
+            { nome: "Regice", tipo: "Pokemon" },
+            { nome: "Kyogre", tipo: "Pokemon" },
+            { nome: "Lugia", tipo: "Pokemon" },
+            { nome: "Xerneas", tipo: "Pokemon" },
+            { nome: "Arceus", tipo: "Pokemon" },
+            { nome: "Giratina", tipo: "Pokemon" },
+            { nome: "Jynx", tipo: "Pokemon" },
+            { nome: "Vulpix", tipo: "Pokemon" },
+            // REMÉDIOS (com nomes que soam "fantásticos" ou ambíguos)
+            { nome: "Ritalina", tipo: "Remedio" },
+            { nome: "Sildenafila", tipo: "Remedio" },
+            { nome: "Metformina", tipo: "Remedio" },
+            { nome: "Venvanse", tipo: "Remedio" },
+            { nome: "Claritin", tipo: "Remedio" },
+            { nome: "Fluoxetina", tipo: "Remedio" },
+            { nome: "Ambrisentan", tipo: "Remedio" },
+            { nome: "Doxiciclina", tipo: "Remedio" },
+            { nome: "Ozempic", tipo: "Remedio" },
+        ];
+
+        // Elementos HTML (referências iguais à versão anterior)
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const scoreBoard = document.getElementById('score-board');
+
+        const palavraElemento = document.getElementById('palavra');
+        const feedbackElemento = document.getElementById('feedback');
+        const placarElemento = document.getElementById('current-score');
+        const recordeElemento = document.getElementById('high-score');
+        const recordeInicialElemento = document.getElementById('recorde-inicial');
+        const finalScoreElemento = document.getElementById('final-score').querySelector('span');
+        const newRecordMessageElemento = document.getElementById('new-record-message');
+
+        const btnPokemon = document.getElementById('btnPokemon');
+        const btnRemedio = document.getElementById('btnRemedio');
+
+        // Variáveis do Jogo
+        let itemAtual = null;
+        let pontuacao = 0;
+        let highScore = localStorage.getItem('highScore') || 0;
+        let indexAtual = -1;
+
+        // --- FUNÇÕES DE CONTROLE DE TELA ---
+
+        function updateHighScore(score) {
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('highScore', highScore);
+                return true; // Novo recorde
+            }
+            return false;
+        }
+
+        function showScreen(screen) {
+            startScreen.style.display = 'none';
+            gameScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            scoreBoard.style.display = 'none';
+
+            if (screen === 'start') {
+                startScreen.style.display = 'block';
+                recordeInicialElemento.textContent = highScore;
+            } else if (screen === 'game') {
+                gameScreen.style.display = 'block';
+                scoreBoard.style.display = 'flex';
+                recordeElemento.textContent = `RECORDE: ${highScore}`;
+            } else if (screen === 'game-over') {
+                gameOverScreen.style.display = 'block';
+                finalScoreElemento.textContent = pontuacao;
+            }
+        }
+
+        // --- FUNÇÕES DE JOGO ---
+
+        function startGame() {
+            pontuacao = 0;
+            placarElemento.textContent = `PONTOS: 0`;
+            showScreen('game');
+            novoItem();
+        }
+
+        function restartGame() {
+            showScreen('start');
+            newRecordMessageElemento.textContent = ''; // Limpa mensagem
+        }
+
+        function novoItem() {
+            let novoIndex;
+            do {
+                novoIndex = Math.floor(Math.random() * itens.length);
+            } while (novoIndex === indexAtual && itens.length > 1);
+            
+            indexAtual = novoIndex;
+            itemAtual = itens[indexAtual];
+            palavraElemento.textContent = itemAtual.nome;
+            feedbackElemento.textContent = "";
+        }
+
+        function gameOver() {
+            const isNewRecord = updateHighScore(pontuacao);
+            recordeElemento.textContent = `RECORDE: ${highScore}`;
+
+            if (isNewRecord) {
+                newRecordMessageElemento.textContent = '🎉 NOVO RECORDE!';
+            } else {
+                newRecordMessageElemento.textContent = '';
+            }
+            showScreen('game-over');
+        }
+
+        function verificarResposta(resposta) {
+            if (!itemAtual) return;
+
+            const correta = (itemAtual.tipo === resposta);
+
+            // Desabilita botões imediatamente
+            btnPokemon.disabled = true;
+            btnRemedio.disabled = true;
+
+            if (correta) {
+                pontuacao++;
+                feedbackElemento.textContent = "✅ CORRETO! +1";
+                feedbackElemento.className = 'correct';
+                placarElemento.textContent = `PONTOS: ${pontuacao}`;
+                
+                // Próxima palavra após um pequeno atraso
+                setTimeout(() => {
+                    novoItem();
+                    btnPokemon.disabled = false;
+                    btnRemedio.disabled = false;
+                }, 1000);
+
+            } else {
+                feedbackElemento.textContent = `❌ ERRADO! A resposta era: ${itemAtual.tipo}.`;
+                feedbackElemento.className = 'wrong';
+                
+                // Fim de Jogo após o feedback
+                setTimeout(gameOver, 2000);
+            }
+        }
+
+        // --- EVENT LISTENERS ---
+
+        btnPokemon.addEventListener('click', () => verificarResposta("Pokemon"));
+        btnRemedio.addEventListener('click', () => verificarResposta("Remedio"));
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            showScreen('start');
+        });
+    </script>
+
+</body>
+</html>
